@@ -42,6 +42,7 @@ export default function App() {
   const [nextId, setNextId] = useState(2)
   const intervals = useRef({})
   const pendingStop = useRef({})
+  const pendingBuzz = useRef({})
 
   // 어떤 클릭이든 AudioContext unlock — 브라우저 자동재생 정책 우회
   useEffect(() => {
@@ -109,8 +110,6 @@ export default function App() {
         return
       }
 
-      let shouldBuzz = false
-
       setMatches(prev => prev.map(m => {
         if (m.id !== id) return m
 
@@ -128,7 +127,7 @@ export default function App() {
         if (m.phase === 'quarter') {
           const newTime = m.time - 1
           if (newTime <= 0) {
-            shouldBuzz = true
+            pendingBuzz.current[id] = true
             if (m.currentQuarter >= m.quarters) {
               pendingStop.current[id] = true
               return { ...m, time: 0, running: false, phase: 'done' }
@@ -141,7 +140,7 @@ export default function App() {
         if (m.phase === 'break') {
           const newTime = m.time - 1
           if (newTime <= 0) {
-            shouldBuzz = true
+            pendingBuzz.current[id] = true
             pendingStop.current[id] = true
             return { ...m, time: m.quarterDuration, phase: 'quarter', currentQuarter: m.currentQuarter + 1, running: false }
           }
@@ -151,7 +150,10 @@ export default function App() {
         return m
       }))
 
-      if (shouldBuzz) playBuzzer()
+      if (pendingBuzz.current[id]) {
+        delete pendingBuzz.current[id]
+        playBuzzer()
+      }
     }, 1000)
   }
 
